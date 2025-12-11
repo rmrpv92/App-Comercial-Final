@@ -87,36 +87,6 @@ El sistema permite a los ejecutivos comerciales gestionar sus actividades diaria
 - Angular CLI 20
 - AWS CLI (para despliegue)
 
-### Instalación Local
-
-```bash
-# Clonar repositorio
-git clone https://github.com/rmrpv92/App-Comercial-Final.git
-
-# Ir al directorio frontend
-cd frontend
-
-# Instalar dependencias
-npm install
-
-# Ejecutar en desarrollo
-ng serve --open
-```
-
-### Despliegue en AWS Amplify
-
-1. Construir el proyecto:
-```bash
-ng build --configuration production
-```
-
-2. Comprimir la carpeta `dist/` en un archivo ZIP
-
-3. En AWS Amplify Console:
-   - Crear nueva aplicación
-   - Seleccionar "Deploy without Git provider"
-   - Subir el archivo ZIP
-
 ## 🔐 Credenciales de Prueba
 
 | Usuario | Contraseña | Rol |
