@@ -141,18 +141,3 @@ ng build --configuration production
 | GET | /cerrados | Ventas cerradas |
 | GET | /produccion | Producción diaria |
 
-## 👥 Equipo - Grupo 3
-
-- Integrante 1
-- Integrante 2
-- Integrante 3
-- Integrante 4
-
-## 📄 Licencia
-
-Este proyecto es parte del curso de Desarrollo para Entorno Web - UPC 2025-2
-
----
-
-**Universidad Peruana de Ciencias Aplicadas - UPC**  
-Diciembre 2025
