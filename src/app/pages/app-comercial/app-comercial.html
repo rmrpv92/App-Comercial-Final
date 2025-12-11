@@ -4,6 +4,76 @@
   <div class="d-flex align-items-center mb-3 header-bar px-2">
     <h4 class="m-0 me-auto header-title">App-comercial</h4>
     <div class="flex-grow-1 text-center breadcrumb-title">Aplicaciones/Seguimiento/Buscar</div>
+    
+    <!-- Notification Bell (HU007) -->
+    <div class="position-relative me-3">
+      <button class="btn btn-link p-0 text-dark" (click)="toggleNotificationsPanel()" title="Notificaciones">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>
+        </svg>
+        <span *ngIf="unreadCount > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+          {{ unreadCount > 9 ? '9+' : unreadCount }}
+        </span>
+      </button>
+      
+      <!-- Notifications Dropdown Panel -->
+      <div *ngIf="showNotificationsPanel" class="position-absolute end-0 mt-2 bg-white shadow rounded" 
+           style="width: 350px; max-height: 400px; overflow-y: auto; z-index: 1050;">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+          <h6 class="m-0">Notificaciones</h6>
+          <button class="btn-close btn-sm" (click)="showNotificationsPanel = false"></button>
+        </div>
+        
+        <!-- Alerts Section (HU007 - High value not attended in 24+ hours) -->
+        <div *ngIf="alertas.length > 0" class="border-bottom">
+          <div class="px-3 py-2 bg-danger bg-opacity-10">
+            <small class="fw-bold text-danger">⚠️ Alertas de Alto Valor ({{alertas.length}})</small>
+          </div>
+          <div *ngFor="let alerta of alertas" class="p-3 border-bottom notification-item" 
+               style="cursor: pointer;" (click)="goToSeguimientoFromAlert(alerta)">
+            <div class="d-flex justify-content-between">
+              <strong class="text-danger small">{{alerta.EMPRESA}}</strong>
+              <span class="badge bg-danger">{{alerta.HORAS_SIN_ATENCION}}h</span>
+            </div>
+            <small class="text-muted d-block">{{alerta.MENSAJE}}</small>
+            <small class="text-muted">Prioridad: {{alerta.PRIORIDAD}} | {{alerta.TIPOSEGUIMIENTO}}</small>
+          </div>
+        </div>
+        
+        <!-- Regular Notifications -->
+        <div *ngIf="notificaciones.length > 0">
+          <div class="px-3 py-2 bg-light">
+            <small class="fw-bold">Notificaciones del Sistema</small>
+          </div>
+          <div *ngFor="let notif of notificaciones" 
+               class="p-3 border-bottom notification-item"
+               [class.bg-light]="!notif.LEIDO"
+               style="cursor: pointer;"
+               (click)="markAsRead(notif)">
+            <div class="d-flex justify-content-between">
+              <strong class="small">{{notif.TITULO}}</strong>
+              <span class="badge" 
+                    [ngClass]="{
+                      'bg-info': notif.TIPO === 'Info',
+                      'bg-warning': notif.TIPO === 'Warning',
+                      'bg-danger': notif.TIPO === 'Alert',
+                      'bg-success': notif.TIPO === 'Success'
+                    }">
+                {{notif.TIPO}}
+              </span>
+            </div>
+            <small class="text-muted d-block">{{notif.MENSAJE}}</small>
+            <small class="text-muted">{{notif.FECHAENVIO | date:'short'}}</small>
+            <span *ngIf="!notif.LEIDO" class="badge bg-primary ms-2">Nuevo</span>
+          </div>
+        </div>
+        
+        <!-- Empty state -->
+        <div *ngIf="alertas.length === 0 && notificaciones.length === 0" class="p-4 text-center text-muted">
+          <p class="m-0">No hay notificaciones</p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row gx-3">
@@ -28,22 +98,27 @@
         </select>
 
         <label class="form-label small">Usuario</label>
-        <select class="form-select mb-3">
-          <option>MVELASQUEZ</option>
+        <select class="form-select mb-3" [(ngModel)]="selectedUserFilter">
+          <option value="">{{ currentUserName }}</option>
         </select>
 
         <hr>
 
         <ul class="list-unstyled action-list">
-          <li class="mb-3 d-flex align-items-start">
-            <img src="assets/icons/calendar.svg" width="32" class="me-2" alt="">
+          <li class="mb-3 d-flex align-items-start" style="cursor: pointer;" (click)="abrirAsignacionClientes()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="me-2 text-primary" viewBox="0 0 16 16">
+              <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+              <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5z"/>
+            </svg>
             <div>
-              <div class="small fw-bold">Asignacion de Clientes a Usuarios</div>
+              <div class="small fw-bold">Asignación de Clientes a Usuarios</div>
             </div>
           </li>
-          <li class="d-flex align-items-start">
-            <img src="assets/icons/reagendar.svg" width="32" class="me-2" alt="">
-            <div class="small fw-bold">Re-agendar clientes a usuarios</div>
+          <li class="d-flex align-items-start" style="cursor: pointer;" (click)="abrirCalendario()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="me-2 text-danger" viewBox="0 0 16 16">
+              <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+            </svg>
+            <div class="small fw-bold">Calendario</div>
           </li>
         </ul>
       </div>
@@ -54,12 +129,12 @@
       <!-- top nav (BUSQUEDA, AGENDA DEL DIA, ...) -->
       <ul class="nav nav-tabs mb-2 small">
         <li class="nav-item" *ngFor="let vt of viewTabs; let i = index">
-          <a class="nav-link" [class.active]="activeView === i" (click)="activeView = i; $event.preventDefault()" href="javascript:void(0)">{{ vt }}</a>
+          <a class="nav-link" [class.active]="activeView === i" (click)="switchView(i); $event.preventDefault()" href="javascript:void(0)">{{ vt }}</a>
         </li>
       </ul>
 
-      <!-- BÚSQUEDA view (default) -->
-      <div *ngIf="activeView === 0">
+      <!-- BÚSQUEDA view (default) - Original Index 0 -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 0">
         <!-- companies grid -->
         <div class="card mb-3">
           <div class="card-body p-2">
@@ -95,7 +170,7 @@
         </div>
 
         <!-- Selected company heading -->
-        <div class="mb-2 selected-heading px-2">{{ selected.name || 'SELECCIONE UNA EMPRESA' }}</div>
+        <div class="mb-2 selected-heading px-2">{{ selected?.name || 'SELECCIONE UNA EMPRESA' }}</div>
 
         <!-- big rounded card with inner tabs -->
         <div class="card rounded-card p-3 position-relative">
@@ -499,471 +574,190 @@
       </div>
       </div>
 
-      <!-- AGENDA DEL DÍA view -->
-      <div *ngIf="activeView === 1">
-        <!-- companies grid for today -->
-        <div class="card mb-3">
-          <div class="card-body p-2">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-bold small">AGENDA DEL DÍA - {{ fechaHoy }}</span>
-              <button class="btn btn-primary btn-sm" (click)="agregarNuevaEmpresa()">
-                <span>+ Nuevo Cliente</span>
-              </button>
-            </div>
-            <div class="table-scroll-container">
-              <table class="table table-sm mb-0">
-                <thead class="table-light small">
-                  <tr>
-                    <th>Razon Social</th>
-                    <th>Contacto</th>
-                    <th>Número de contacto</th>
-                    <th>Fecha de contacto</th>
-                    <th>USUARIO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let c of companiesAgendaHoy" (click)="selectCompany(c)" [class.table-primary]="selected.id === c.id" style="cursor:pointer">
-                    <td><strong>{{ c.name }}</strong></td>
-                    <td>{{ c.contact }}</td>
-                    <td>{{ c.phone }}</td>
-                    <td>{{ getUltimaFechaContacto(c) }}</td>
-                    <td>{{ c.user }}</td>
-                  </tr>
-                  <tr *ngIf="companiesAgendaHoy.length === 0">
-                    <td colspan="5" class="text-center text-muted py-3">
-                      No hay contactos programados para hoy
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      <!-- AGENDA DEL DÍA view (HU002 - Lista de citas del día con seguimiento) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 1">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingAgenda" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
           </div>
+          <p class="mt-2 text-muted">Cargando agenda del día...</p>
         </div>
-
-        <!-- Selected company heading -->
-        <div class="mb-2 selected-heading px-2">{{ selected.name || 'SELECCIONE UNA EMPRESA' }}</div>
-
-        <!-- big rounded card with inner tabs -->
-        <div class="card rounded-card p-3 position-relative">
         
-        <!-- inner tabs -->
-        <ul class="nav nav-tabs mb-3" role="tablist">
-          <li class="nav-item" *ngFor="let t of tabs; let i = index">
-            <a class="nav-link" [class.active]="activeTab === i" (click)="activeTab = i; $event.preventDefault()" href="javascript:void(0)">{{ t }}</a>
-          </li>
-        </ul>
-
-        <div class="tab-content">
-          <!-- Datos Empresa -->
-          <div *ngIf="activeTab === 0" class="tab-pane active">
-            <form [formGroup]="datosEmpresaForm">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">RAZON SOCIAL</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="razonSocial">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('razonSocial')?.invalid && datosEmpresaForm.get('razonSocial')?.touched">
-                        Razón social es requerida
-                      </small>
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">RUC.</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="ruc">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('ruc')?.invalid && datosEmpresaForm.get('ruc')?.touched">
-                        Debe tener 11 dígitos
-                      </small>
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">SEDE PRINCIPAL</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="sedePrincipal">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">DOMICILIO</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="domicilio">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">NOMBRE CONTACT</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="nombreContacto">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('nombreContacto')?.invalid && datosEmpresaForm.get('nombreContacto')?.touched">
-                        Nombre del contacto es requerido
-                      </small>
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">CARGO</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="cargo">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">EMAIL</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="email">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('email')?.invalid && datosEmpresaForm.get('email')?.touched">
-                        Email no válido
-                      </small>
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TELEFONO</label>
-                    <div class="col-8">
-                      <input class="form-control form-control-sm" formControlName="telefono">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('telefono')?.invalid && datosEmpresaForm.get('telefono')?.touched">
-                        Debe tener 9 dígitos
-                      </small>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="mb-2 row">
-                    <label class="col-5 col-form-label small">TIPO DE EMPRESA</label>
-                    <div class="col-7">
-                      <input class="form-control form-control-sm" formControlName="tipoEmpresa">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-5 col-form-label small">NRO TRABAJAD</label>
-                    <div class="col-7">
-                      <input type="number" class="form-control form-control-sm" formControlName="nroTrabajadores">
-                      <small class="text-danger" *ngIf="datosEmpresaForm.get('nroTrabajadores')?.invalid && datosEmpresaForm.get('nroTrabajadores')?.touched">
-                        Debe ser mayor a 0
-                      </small>
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-5 col-form-label small">ACT. ECONOMICA</label>
-                    <div class="col-7">
-                      <input class="form-control form-control-sm" formControlName="actEconomica">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-5 col-form-label small">RIESGO</label>
-                    <div class="col-7">
-                      <input class="form-control form-control-sm" formControlName="riesgo">
-                    </div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-5 col-form-label small">SEDES</label>
-                    <div class="col-7">
-                      <textarea class="form-control form-control-sm" formControlName="sedes" rows="3"></textarea>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="position-absolute bottom-0 end-0 p-3">
-                <button *ngIf="!isEditMode" type="button" class="btn btn-primary btn-sm me-2" (click)="editarEmpresa()">
-                  Editar
-                </button>
-                <button *ngIf="isEditMode" type="button" class="btn btn-success btn-sm me-2" (click)="guardarEmpresa()">
-                  Guardar
-                </button>
-                <button *ngIf="isEditMode" type="button" class="btn btn-secondary btn-sm" (click)="cancelarEdicion()">
-                  Cancelar
+        <div *ngIf="!isLoadingAgenda">
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0">AGENDA DEL DÍA - {{ fechaHoyFormateado }}</h5>
+                <button class="btn btn-success" (click)="abrirModalNuevaCita()">
+                  + NUEVA CITA
                 </button>
               </div>
-            </form>
-          </div>
-
-          <!-- Seguimiento -->
-          <div *ngIf="activeTab === 1" class="tab-pane" style="display: block !important;">
-            <form [formGroup]="seguimientoForm">
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TIPO CLIENTE</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="tipoCliente"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TIPO COMUNIC.</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="tipoComunic"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">LINEA DE NEGOCIO</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="lineaNegocio"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">SUB LINEA NEG.</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="subLinea"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TIPO DE CREDITO</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="tipoCredito"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">PRESUPUESTO</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="presupuesto"></div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">FECHA 1ER CTO</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="fecha1erCto"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TIPO CARTERA</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="tipoCartera"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">ESTATUS CLIENTE</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="estatusCliente"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">DETALLE ESTATUS</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="detalleEstatus"></div>
-                  </div>
-                  <div class="mb-2 row">
-                    <label class="col-4 col-form-label small">TIPO LLAMADA</label>
-                    <div class="col-8"><input class="form-control form-control-sm" formControlName="tipoLlamada"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-3">
-                <label class="form-label small">OBSERVACIONES</label>
-                <textarea class="form-control" rows="4" formControlName="observaciones"></textarea>
-              </div>
-
-              <!-- Action Buttons -->
-              <div class="position-absolute bottom-0 end-0 p-3">
-                <button *ngIf="!isSeguimientoEditMode" type="button" class="btn btn-primary btn-sm me-2" (click)="editarSeguimiento()">
-                  Editar
-                </button>
-                <button *ngIf="isSeguimientoEditMode" type="button" class="btn btn-success btn-sm me-2" (click)="guardarSeguimiento()">
-                  Guardar
-                </button>
-                <button *ngIf="isSeguimientoEditMode" type="button" class="btn btn-secondary btn-sm" (click)="cancelarSeguimiento()">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- Historico -->
-          <div *ngIf="activeTab === 2" class="tab-pane" style="display: block !important;">
-            <div class="card">
-              <div class="card-body p-2">
-                <table class="table table-sm mb-0">
-                  <thead class="table-light small">
+              
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-light">
                     <tr>
-                      <th>FECHA</th>
-                      <th>STATUS</th>
-                      <th>contacto</th>
-                      <th>USUARIO</th>
-                      <th *ngIf="isHistoricoEditMode" style="width: 120px;">ACCIONES</th>
+                      <th>HORA</th>
+                      <th>EMPRESA</th>
+                      <th>CONTACTO</th>
+                      <th>TELÉFONO</th>
+                      <th>TIPO SEGUIMIENTO</th>
+                      <th>ESTADO</th>
+                      <th>ACCIONES</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let h of selected?.history; let i = index">
-                      <td class="text-primary">
-                        <input *ngIf="editingHistoricoIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="h.fecha">
-                        <span *ngIf="editingHistoricoIndex !== i">{{ h.fecha }}</span>
+                    <tr *ngFor="let item of agendaDiaData" 
+                        style="cursor:pointer">
+                      <td class="fw-bold">{{ item.HORAPROGRAMADA || '09:00' }}</td>
+                      <td>{{ item.NOMBRECOMERCIAL }}</td>
+                      <td>{{ item.CONTACTO_NOMBRE }}</td>
+                      <td>{{ item.CONTACTO_TELEFONO }}</td>
+                      <td>{{ item.TIPOSEGUIMIENTO }}</td>
+                      <td>
+                        <span class="badge rounded-pill px-3 py-2" 
+                              [ngClass]="{
+                                'bg-success': item.ESTADO === 'COMPLETADO' || item.ESTADO === 'REALIZADO',
+                                'bg-warning text-dark': item.ESTADO === 'PENDIENTE',
+                                'bg-secondary': item.ESTADO === 'CANCELADO'
+                              }">
+                          {{ item.ESTADO }}
+                        </span>
                       </td>
                       <td>
-                        <input *ngIf="editingHistoricoIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="h.status">
-                        <span *ngIf="editingHistoricoIndex !== i">{{ h.status }}</span>
+                        <button class="btn btn-sm btn-outline-primary me-1" (click)="goToEmpresaFromAgenda(item)" title="Ver seguimiento">
+                          📋
+                        </button>
+                        <button class="btn btn-sm btn-outline-success me-1" title="Marcar completado">
+                          ✅
+                        </button>
                       </td>
-                      <td>
-                        <input *ngIf="editingHistoricoIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="h.contacto">
-                        <span *ngIf="editingHistoricoIndex !== i">{{ h.contacto }}</span>
-                      </td>
-                      <td>
-                        <input *ngIf="editingHistoricoIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="h.usuario">
-                        <span *ngIf="editingHistoricoIndex !== i">{{ h.usuario }}</span>
-                      </td>
-                      <td *ngIf="isHistoricoEditMode">
-                        <button *ngIf="editingHistoricoIndex !== i" class="btn btn-sm btn-outline-primary me-1" (click)="editarHistorico(i)" title="Editar">
-                          <i class="bi bi-pencil"></i> ✏️
-                        </button>
-                        <button *ngIf="editingHistoricoIndex === i" class="btn btn-sm btn-outline-success me-1" (click)="guardarHistorico(i)" title="Guardar">
-                          💾
-                        </button>
-                        <button *ngIf="editingHistoricoIndex === i" class="btn btn-sm btn-outline-secondary me-1" (click)="cancelarHistorico()" title="Cancelar">
-                          ❌
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" (click)="eliminarHistorico(i)" title="Eliminar">
-                          <i class="bi bi-trash"></i> 🗑️
-                        </button>
+                    </tr>
+                    <tr *ngIf="agendaDiaData.length === 0">
+                      <td colspan="7" class="text-center text-muted py-4">
+                        No hay citas programadas para hoy
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <!-- Action Button -->
-            <div class="position-absolute bottom-0 end-0 p-3">
-              <button *ngIf="!isHistoricoEditMode" type="button" class="btn btn-primary btn-sm me-2" (click)="isHistoricoEditMode = true">
-                Editar
-              </button>
-              <button *ngIf="isHistoricoEditMode" type="button" class="btn btn-success btn-sm me-2" (click)="agregarRegistroHistorico()">
-                Agregar Registro
-              </button>
-              <button *ngIf="isHistoricoEditMode" type="button" class="btn btn-secondary btn-sm" (click)="isHistoricoEditMode = false">
-                Cancelar
-              </button>
+      <!-- DASHBOARD view (HU003 - KPIs + Agenda resumen) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 2">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingDashboard" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2 text-muted">Cargando dashboard...</p>
+        </div>
+        
+        <div *ngIf="!isLoadingDashboard">
+          <!-- KPI Cards Row -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="card text-white" style="background-color: #4a7c59;">
+                <div class="card-body text-center py-4">
+                  <h6 class="card-title mb-2">CITAS PROGRAMADAS</h6>
+                  <h2 class="display-4 fw-bold">{{ dashboardMetrics?.CITAS_PROGRAMADAS || agendaDiaData.length || 0 }}</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card text-white" style="background-color: #6c757d;">
+                <div class="card-body text-center py-4">
+                  <h6 class="card-title mb-2">CITAS PENDIENTES</h6>
+                  <h2 class="display-4 fw-bold">{{ dashboardMetrics?.CITAS_PENDIENTES || getCitasPendientes() }}</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card text-white" style="background-color: #5dade2;">
+                <div class="card-body text-center py-4">
+                  <h6 class="card-title mb-2">TASA DE CUMPLIMIENTO</h6>
+                  <h2 class="display-4 fw-bold">{{ dashboardMetrics?.TASA_CUMPLIMIENTO || getTasaCumplimiento() }}%</h2>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Protocolos y Cotizaciones -->
-          <div *ngIf="activeTab === 3" class="tab-pane" style="display: block !important;">
-            <div class="mb-4">
-              <h6 class="section-title">PROTOCOLOS ENVIADOS POR EL CLIENTE</h6>
-              <div class="card">
-                <div class="card-body p-2">
-                  <table class="table table-sm mb-0">
-                    <thead class="table-light small">
-                      <tr>
-                        <th>FECHA</th>
-                        <th>RUTA DOC</th>
-                        <th>NOMBRE DOC</th>
-                        <th>USUARIO</th>
-                        <th *ngIf="isProtocolosEditMode" style="width: 120px;">ACCIONES</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr *ngFor="let p of selected?.protocols; let i = index">
-                        <td class="text-primary">
-                          <input *ngIf="editingProtocoloIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="p.fecha">
-                          <span *ngIf="editingProtocoloIndex !== i">{{ p.fecha }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingProtocoloIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="p.ruta">
-                          <span *ngIf="editingProtocoloIndex !== i">{{ p.ruta }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingProtocoloIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="p.nombre">
-                          <span *ngIf="editingProtocoloIndex !== i">{{ p.nombre }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingProtocoloIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="p.usuario">
-                          <span *ngIf="editingProtocoloIndex !== i">{{ p.usuario }}</span>
-                        </td>
-                        <td *ngIf="isProtocolosEditMode">
-                          <button *ngIf="editingProtocoloIndex !== i" class="btn btn-sm btn-outline-primary me-1" (click)="editarProtocolo(i)" title="Editar">
-                            ✏️
-                          </button>
-                          <button *ngIf="editingProtocoloIndex === i" class="btn btn-sm btn-outline-success me-1" (click)="guardarProtocolo(i)" title="Guardar">
-                            💾
-                          </button>
-                          <button *ngIf="editingProtocoloIndex === i" class="btn btn-sm btn-outline-secondary me-1" (click)="cancelarProtocolo()" title="Cancelar">
-                            ❌
-                          </button>
-                          <button class="btn btn-sm btn-outline-danger" (click)="eliminarProtocolo(i)" title="Eliminar">
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+          <!-- Agenda del Día Section -->
+          <div class="card">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0">AGENDA DEL DÍA ({{ fechaHoyFormateado }})</h5>
+                <button class="btn btn-success" (click)="abrirModalNuevaCita()">
+                  + AGENDA NUEVA CITA
+                </button>
               </div>
-            </div>
-
-            <div>
-              <h6 class="section-title">COTIZACIONES ENVIADOS AL CLIENTE</h6>
-              <div class="card">
-                <div class="card-body p-2">
-                  <table class="table table-sm mb-0">
-                    <thead class="table-light small">
-                      <tr>
-                        <th>FECHA</th>
-                        <th>RUTA DOC</th>
-                        <th>NOMBRE DOC</th>
-                        <th>USUARIO</th>
-                        <th *ngIf="isProtocolosEditMode" style="width: 120px;">ACCIONES</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr *ngFor="let q of selected?.quotes; let i = index">
-                        <td class="text-primary">
-                          <input *ngIf="editingCotizacionIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="q.fecha">
-                          <span *ngIf="editingCotizacionIndex !== i">{{ q.fecha }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingCotizacionIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="q.ruta">
-                          <span *ngIf="editingCotizacionIndex !== i">{{ q.ruta }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingCotizacionIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="q.nombre">
-                          <span *ngIf="editingCotizacionIndex !== i">{{ q.nombre }}</span>
-                        </td>
-                        <td>
-                          <input *ngIf="editingCotizacionIndex === i" type="text" class="form-control form-control-sm" [(ngModel)]="q.usuario">
-                          <span *ngIf="editingCotizacionIndex !== i">{{ q.usuario }}</span>
-                        </td>
-                        <td *ngIf="isProtocolosEditMode">
-                          <button *ngIf="editingCotizacionIndex !== i" class="btn btn-sm btn-outline-primary me-1" (click)="editarCotizacion(i)" title="Editar">
-                            ✏️
-                          </button>
-                          <button *ngIf="editingCotizacionIndex === i" class="btn btn-sm btn-outline-success me-1" (click)="guardarCotizacion(i)" title="Guardar">
-                            💾
-                          </button>
-                          <button *ngIf="editingCotizacionIndex === i" class="btn btn-sm btn-outline-secondary me-1" (click)="cancelarCotizacion()" title="Cancelar">
-                            ❌
-                          </button>
-                          <button class="btn btn-sm btn-outline-danger" (click)="eliminarCotizacion(i)" title="Eliminar">
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+              
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th>HORA PROGRAMADA</th>
+                      <th>EMPRESA/PACIENTE</th>
+                      <th>FECHA</th>
+                      <th>ESTADO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let item of agendaDiaData" 
+                        (click)="goToEmpresaFromAgenda(item)" 
+                        style="cursor:pointer">
+                      <td class="fw-bold">{{ item.HORAPROGRAMADA }}</td>
+                      <td>{{ item.NOMBRECOMERCIAL || item.CONTACTO_NOMBRE }}</td>
+                      <td>{{ item.FECHAPROGRAMADA | date:'dd-MM-yy' }}</td>
+                      <td>
+                        <span class="badge rounded-pill px-3 py-2" 
+                              [ngClass]="{
+                                'text-white': true,
+                                'bg-success': item.ESTADO === 'COMPLETADO' || item.ESTADO === 'REALIZADO',
+                                'bg-warning': item.ESTADO === 'PENDIENTE',
+                                'bg-secondary': item.ESTADO === 'CANCELADO'
+                              }"
+                              [style.backgroundColor]="item.ESTADO === 'COMPLETADO' || item.ESTADO === 'REALIZADO' ? '#6dd5a4' : (item.ESTADO === 'PENDIENTE' ? '#ffb347' : '#6c757d')">
+                          {{ item.ESTADO === 'COMPLETADO' ? 'REALIZADO' : item.ESTADO }}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr *ngIf="agendaDiaData.length === 0">
+                      <td colspan="4" class="text-center text-muted py-4">
+                        No hay citas programadas para hoy
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="position-absolute bottom-0 end-0 p-3">
-              <button *ngIf="!isProtocolosEditMode" type="button" class="btn btn-primary btn-sm me-2" (click)="isProtocolosEditMode = true">
-                Editar
-              </button>
-              <button *ngIf="isProtocolosEditMode" type="button" class="btn btn-success btn-sm me-2" (click)="agregarProtocolo()">
-                Agregar Protocolo
-              </button>
-              <button *ngIf="isProtocolosEditMode" type="button" class="btn btn-success btn-sm me-2" (click)="agregarCotizacion()">
-                Agregar Cotización
-              </button>
-              <button *ngIf="isProtocolosEditMode" type="button" class="btn btn-secondary btn-sm" (click)="isProtocolosEditMode = false">
-                Cancelar
-              </button>
             </div>
           </div>
         </div>
       </div>
-      </div>
 
-      <!-- PENDIENTES ACUMULADOS view -->
-      <div *ngIf="activeView === 2">
+      <!-- PENDIENTES ACUMULADOS view (HU005) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 3">
         <div class="card p-3 mb-3">
           <div class="row align-items-center">
             <div class="col-md-4">
               <label class="form-label small mb-1 fw-bold">Prioridad</label>
-              <select class="form-select" [(ngModel)]="prioridadFilterAcumulados">
+              <select class="form-select" [(ngModel)]="prioridadFilterAcumulados" (ngModelChange)="loadPendientesAcumulados()">
                 <option value="Todos">— Todos —</option>
-                <option value="Alta">Alta</option>
-                <option value="Media">Media</option>
-                <option value="Baja">Baja</option>
+                <option value="ALTA">Alta</option>
+                <option value="MEDIA">Media</option>
+                <option value="BAJA">Baja</option>
               </select>
             </div>
             <div class="col-md-5">
               <label class="form-label small mb-1 fw-bold">Fecha</label>
               <div class="d-flex gap-2 align-items-center">
-                <input type="date" class="form-control" [(ngModel)]="fechaInicioAcumulados" placeholder="Desde">
+                <input type="date" class="form-control" [(ngModel)]="fechaInicioAcumulados" (ngModelChange)="loadPendientesAcumulados()" placeholder="Desde">
                 <span>–</span>
-                <input type="date" class="form-control" [(ngModel)]="fechaFinAcumulados" placeholder="Hasta">
+                <input type="date" class="form-control" [(ngModel)]="fechaFinAcumulados" (ngModelChange)="loadPendientesAcumulados()" placeholder="Hasta">
               </div>
             </div>
             <div class="col-md-3 d-flex align-items-end">
@@ -990,9 +784,9 @@
                   <td>{{ p.contacto }}</td>
                   <td>
                     <span class="badge" [ngClass]="{
-                      'bg-danger': p.prioridad === 'Alta',
-                      'bg-warning': p.prioridad === 'Media',
-                      'bg-success': p.prioridad === 'Baja'
+                      'bg-danger': p.prioridad === 'ALTA',
+                      'bg-warning': p.prioridad === 'MEDIA',
+                      'bg-success': p.prioridad === 'BAJA'
                     }">{{ p.prioridad }}</span>
                   </td>
                 </tr>
@@ -1002,246 +796,25 @@
         </div>
       </div>
 
-      <!-- ASIG. SUPERVISOR view -->
-      <div *ngIf="activeView === 4">
-        <div class="row">
-          <!-- Left sidebar -->
-          <div class="col-md-3">
-            <div class="card p-3 mb-3">
-              <h6 class="fw-bold mb-3">Agenda del equipo</h6>
-              
-              <div class="mb-3">
-                <h6 class="fw-bold small mb-2">Leyenda de colores</h6>
-                <div class="d-flex align-items-center mb-2">
-                  <div class="legend-color" style="background: #6c9eff;"></div>
-                  <span class="small">Reuniones</span>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                  <div class="legend-color" style="background: #6dd5a4;"></div>
-                  <span class="small">Visitas</span>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                  <div class="legend-color" style="background: #ffb347;"></div>
-                  <span class="small">Seguimientos/llamadas</span>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                  <div class="legend-color" style="background: #ff6b6b;"></div>
-                  <span class="small">Presentaciones</span>
-                </div>
-                <div class="d-flex align-items-center mb-2">
-                  <div class="legend-color" style="background: #b8a3ff;"></div>
-                  <span class="small">Alto valor</span>
-                </div>
-              </div>
-
-              <hr>
-
-              <div class="mb-3">
-                <h6 class="fw-bold small mb-2">Resumen de hoy</h6>
-                <div class="small mb-1"><strong>3</strong> reuniones</div>
-                <div class="small mb-1"><strong>2</strong> visitas</div>
-                <div class="small"><strong>1</strong> seguimiento de alto valor</div>
-              </div>
-
-              <hr>
-
-              <div class="mb-3">
-                <h6 class="fw-bold small mb-2">Resumen de hoy</h6>
-                <div class="small mb-1">3 reuniones - 2 Visitas</div>
-                <div class="small">1 seguimiento d'alto valor</div>
-              </div>
-
-              <button class="btn btn-primary w-100">+ Nueva actividad</button>
-            </div>
-          </div>
-
-          <!-- Calendar view -->
-          <div class="col-md-9">
-            <div class="card p-3">
-              <!-- Filters -->
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="d-flex gap-3 align-items-center">
-                  <div>
-                    <label class="small fw-bold mb-1">Ejecutivo</label>
-                    <select class="form-select form-select-sm" style="width: 200px;">
-                      <option>— Todos —</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="small fw-bold mb-1">Vista</label>
-                    <div class="input-group input-group-sm" style="width: 280px;">
-                      <input type="text" class="form-control" value="22/04/2024 – 28/04/2024" readonly>
-                      <button class="btn btn-outline-secondary" type="button">📅</button>
-                    </div>
-                  </div>
-                </div>
-                <button class="btn btn-primary btn-sm">Limpiar filtros</button>
-              </div>
-
-              <!-- Calendar grid -->
-              <div class="calendar-grid">
-                <!-- Header -->
-                <div class="calendar-header">
-                  <div class="time-column"></div>
-                  <div class="day-column">
-                    <div class="day-label">Lun 22</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Mar 23</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Mié 24</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Jue 25</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Vie 26</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Sá 27</div>
-                  </div>
-                  <div class="day-column">
-                    <div class="day-label">Dom 28</div>
-                  </div>
-                </div>
-
-                <!-- Time slots -->
-                <div class="calendar-body">
-                  <!-- 09:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">09:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 11:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">11:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell">
-                      <div class="event event-reunion">
-                        <div class="event-title">EMPRESA ALFA</div>
-                        <div class="event-subtitle">Reunión - Lopez</div>
-                      </div>
-                    </div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 13:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">13:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell">
-                      <div class="event event-visita">
-                        <div class="event-title">EMPRESA BETA</div>
-                        <div class="event-subtitle">Visita - Parez</div>
-                      </div>
-                    </div>
-                    <div class="time-cell">
-                      <div class="event event-presentacion">
-                        <div class="event-title">EMPRESA GAMMA</div>
-                        <div class="event-subtitle">Presentación</div>
-                      </div>
-                    </div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 15:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">15:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 17:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">17:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell">
-                      <div class="event event-seguimiento">
-                        <div class="event-title">Seguimientos</div>
-                        <div class="event-subtitle">/llamadas</div>
-                      </div>
-                    </div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell">
-                      <div class="event event-alto-valor">
-                        <div class="event-title">Alto valor</div>
-                        <div class="event-subtitle">Cierre semana</div>
-                      </div>
-                    </div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 18:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">18:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-
-                  <!-- 19:00 row -->
-                  <div class="time-row">
-                    <div class="time-label">19:00</div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                    <div class="time-cell"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- PENDIENTES OLVIDADOS view -->
-      <div *ngIf="activeView === 3">
+      <!-- PENDIENTES OLVIDADOS view (HU004) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 4">
         <div class="card p-3 mb-3">
           <div class="row align-items-center">
             <div class="col-md-4">
               <label class="form-label small mb-1 fw-bold">Prioridad</label>
-              <select class="form-select" [(ngModel)]="prioridadFilterOlvidados">
+              <select class="form-select" [(ngModel)]="prioridadFilterOlvidados" (ngModelChange)="loadPendientesOlvidados()">
                 <option value="Todos">— Todos —</option>
-                <option value="Alta">Alta</option>
-                <option value="Media">Media</option>
-                <option value="Baja">Baja</option>
+                <option value="ALTA">Alta</option>
+                <option value="MEDIA">Media</option>
+                <option value="BAJA">Baja</option>
               </select>
             </div>
             <div class="col-md-5">
               <label class="form-label small mb-1 fw-bold">Fecha</label>
               <div class="d-flex gap-2 align-items-center">
-                <input type="date" class="form-control" [(ngModel)]="fechaInicioOlvidados" placeholder="Desde">
+                <input type="date" class="form-control" [(ngModel)]="fechaInicioOlvidados" (ngModelChange)="loadPendientesOlvidados()" placeholder="Desde">
                 <span>–</span>
-                <input type="date" class="form-control" [(ngModel)]="fechaFinOlvidados" placeholder="Hasta">
+                <input type="date" class="form-control" [(ngModel)]="fechaFinOlvidados" (ngModelChange)="loadPendientesOlvidados()" placeholder="Hasta">
               </div>
             </div>
             <div class="col-md-3 d-flex align-items-end">
@@ -1268,9 +841,9 @@
                   <td>{{ p.contacto }}</td>
                   <td>
                     <span class="badge" [ngClass]="{
-                      'bg-danger': p.prioridad === 'Alta',
-                      'bg-warning': p.prioridad === 'Media',
-                      'bg-success': p.prioridad === 'Baja'
+                      'bg-danger': p.prioridad === 'ALTA',
+                      'bg-warning': p.prioridad === 'MEDIA',
+                      'bg-success': p.prioridad === 'BAJA'
                     }">{{ p.prioridad }}</span>
                   </td>
                 </tr>
@@ -1280,26 +853,127 @@
         </div>
       </div>
 
-      <!-- CERRADOS view -->
-      <div *ngIf="activeView === 5">
+      <!-- MONITOREO view (HU006 - Calendario de supervisión) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 5">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingDashboard" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2 text-muted">Cargando calendario...</p>
+        </div>
+        
+        <div *ngIf="!isLoadingDashboard">
+          <!-- Summary metrics -->
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <div class="card text-white bg-primary">
+                <div class="card-body text-center py-3">
+                  <h6 class="card-title mb-1">PROGRAMADOS SEMANA</h6>
+                  <h3 class="fw-bold m-0">{{ dashboardMetrics?.PROGRAMADOS_SEMANA || 0 }}</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-white bg-success">
+                <div class="card-body text-center py-3">
+                  <h6 class="card-title mb-1">COMPLETADOS</h6>
+                  <h3 class="fw-bold m-0">{{ dashboardMetrics?.COMPLETADOS_SEMANA || 0 }}</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-white bg-warning">
+                <div class="card-body text-center py-3">
+                  <h6 class="card-title mb-1">PENDIENTES</h6>
+                  <h3 class="fw-bold m-0">{{ dashboardMetrics?.PENDIENTES_SEMANA || 0 }}</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card text-white bg-info">
+                <div class="card-body text-center py-3">
+                  <h6 class="card-title mb-1">CANCELADOS</h6>
+                  <h3 class="fw-bold m-0">{{ dashboardMetrics?.CANCELADOS_SEMANA || 0 }}</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar view -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="m-0 fw-bold">CALENDARIO SEMANAL</h5>
+              <div>
+                <button class="btn btn-outline-secondary btn-sm me-2" (click)="abrirCalendario()">
+                  📅 Ver mes completo
+                </button>
+                <button class="btn btn-success btn-sm" (click)="abrirModalNuevaCita()">
+                  + Nueva Cita
+                </button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                  <thead class="table-light">
+                    <tr class="text-center">
+                      <th style="width:14.28%">LUNES</th>
+                      <th style="width:14.28%">MARTES</th>
+                      <th style="width:14.28%">MIÉRCOLES</th>
+                      <th style="width:14.28%">JUEVES</th>
+                      <th style="width:14.28%">VIERNES</th>
+                      <th style="width:14.28%">SÁBADO</th>
+                      <th style="width:14.28%">DOMINGO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style="height: 200px;">
+                      <td *ngFor="let day of ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM']" class="align-top p-2" style="font-size: 0.85rem;">
+                        <div *ngFor="let item of calendarioData" class="calendar-event mb-1 p-1 rounded" 
+                             [style.backgroundColor]="item.ESTADO === 'PENDIENTE' ? '#fff3cd' : '#d1e7dd'">
+                          <small class="fw-bold">{{ item.HORAPROGRAMADA }}</small><br>
+                          <small>{{ item.NOMBRECOMERCIAL | slice:0:15 }}...</small>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VENTAS CERRADAS view (HU008) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 6">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingCerrados" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2 text-muted">Cargando ventas cerradas...</p>
+        </div>
+        
+        <div *ngIf="!isLoadingCerrados">
         <!-- Metrics cards -->
         <div class="row mb-3">
           <div class="col-md-4">
             <div class="metric-card metric-card-green">
               <div class="metric-label">Monto Acumulado Semanal</div>
-              <div class="metric-value">S/ 10,650.00</div>
+              <div class="metric-value">S/ {{ cerradosData?.metricas?.MONTO_TOTAL || 0 | number:'1.2-2' }}</div>
             </div>
           </div>
           <div class="col-md-4">
             <div class="metric-card metric-card-blue">
               <div class="metric-label">Contratos Cerrados</div>
-              <div class="metric-value">4</div>
+              <div class="metric-value">{{ cerradosData?.metricas?.TOTAL_CERRADOS || 0 }}</div>
             </div>
           </div>
           <div class="col-md-4">
             <div class="metric-card metric-card-primary">
-              <div class="metric-label">Meta Semanal</div>
-              <div class="metric-value">85%</div>
+              <div class="metric-label">Días Promedio de Cierre</div>
+              <div class="metric-value">{{ cerradosData?.metricas?.DIAS_PROMEDIO_CIERRE || 0 }} días</div>
               <div class="progress mt-2" style="height: 8px;">
                 <div class="progress-bar bg-success" role="progressbar" style="width: 85%"></div>
               </div>
@@ -1313,33 +987,22 @@
             <div class="card">
               <div class="card-body">
                 <h6 class="fw-bold mb-3">Rendimiento Diario</h6>
-                <div class="chart-container">
-                  <canvas id="dailyPerformanceChart" style="max-height: 250px;"></canvas>
-                </div>
-                <!-- Simple bar chart visualization -->
-                <div class="simple-chart">
-                  <div class="chart-bars">
-                    <div class="chart-bar-group">
-                      <div class="chart-bar" style="height: 40%;" data-label="Lunes"></div>
-                      <span class="chart-label">Lunes</span>
+                <!-- Dynamic bar chart using porDia data -->
+                <div class="simple-chart" *ngIf="cerradosData?.porDia && cerradosData.porDia.length > 0" style="height: 200px; display: flex; align-items: flex-end; justify-content: space-around; padding: 20px;">
+                  <div *ngFor="let dia of cerradosData.porDia" style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                    <div class="bg-primary" 
+                         [style.height.px]="getBarHeight(dia.CANTIDAD)"
+                         [title]="dia.CANTIDAD + ' ventas'"
+                         style="width: 40px; border-radius: 4px 4px 0 0; min-height: 5px;">
                     </div>
-                    <div class="chart-bar-group">
-                      <div class="chart-bar" style="height: 45%;" data-label="Martes"></div>
-                      <span class="chart-label">Martes</span>
-                    </div>
-                    <div class="chart-bar-group">
-                      <div class="chart-bar" style="height: 75%;" data-label="Miércoles"></div>
-                      <span class="chart-label">Miércoles</span>
-                    </div>
-                    <div class="chart-bar-group">
-                      <div class="chart-bar" style="height: 85%;" data-label="Jueves"></div>
-                      <span class="chart-label">Jueves</span>
-                    </div>
-                    <div class="chart-bar-group">
-                      <div class="chart-bar" style="height: 95%;" data-label="Viernes"></div>
-                      <span class="chart-label">Viernes</span>
-                    </div>
+                    <span class="small mt-1">{{ dia.DIA_SEMANA }}</span>
+                    <span class="fw-bold">{{ dia.CANTIDAD }}</span>
                   </div>
+                </div>
+                <!-- Fallback when no data -->
+                <div class="text-center text-muted py-4" *ngIf="!cerradosData?.porDia || cerradosData.porDia.length === 0">
+                  <i class="bi bi-bar-chart fs-1"></i>
+                  <p class="mt-2">Sin datos para esta semana</p>
                 </div>
               </div>
             </div>
@@ -1353,32 +1016,19 @@
                     <tr>
                       <th>Empresa</th>
                       <th>Servicio</th>
-                      <th>Fecha</th>
                       <th>Monto</th>
-                      <th>Estado</th>
+                      <th>Fecha</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>Inversiones del Sur S.A.C.</td>
-                      <td>Análisis de Suelos</td>
-                      <td>18/11/2025</td>
-                      <td>S/ 2,500.00</td>
-                      <td><span class="badge bg-success">Cerrado</span></td>
+                    <tr *ngFor="let item of cerradosData?.historial || []">
+                      <td>{{ item.EMPRESA }}</td>
+                      <td>{{ item.SERVICIO || 'N/A' }}</td>
+                      <td>S/ {{ item.MONTO | number:'1.2-2' }}</td>
+                      <td>{{ item.FECHA }}</td>
                     </tr>
-                    <tr>
-                      <td>Constructora Lima Norte E.I.R.L.</td>
-                      <td>Ensayo de Concreto</td>
-                      <td>19/11/2025</td>
-                      <td>S/ 3,200.00</td>
-                      <td><span class="badge bg-success">Cerrado</span></td>
-                    </tr>
-                    <tr>
-                      <td>Minera Pacífico S.A.</td>
-                      <td>Análisis de Aguas</td>
-                      <td>20/11/2025</td>
-                      <td>S/ 4,950.00</td>
-                      <td><span class="badge bg-success">Cerrado</span></td>
+                    <tr *ngIf="!cerradosData?.historial || cerradosData?.historial?.length === 0">
+                      <td colspan="4" class="text-center text-muted">No hay ventas cerradas esta semana</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1386,149 +1036,92 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      <!-- PROD. DÍA view -->
-      <div *ngIf="activeView === 6">
-        <div class="card">
-          <div class="card-body p-3">
-            <h5 class="fw-bold mb-4">Productividad del Día</h5>
-            
-            <!-- Performance table with bars -->
-            <div class="prod-table">
-              <div class="prod-header">
-                <div class="prod-col-user">usuario</div>
-                <div class="prod-col-name">Nombre</div>
-                <div class="prod-col-chart">Agendados Ejecutivo</div>
-                <div class="prod-col-chart">Asignados supervisor</div>
-                <div class="prod-col-action">Asignar</div>
-              </div>
-
-              <!-- Row 1: jperez -->
-              <div class="prod-row">
-                <div class="prod-col-user">jperez</div>
-                <div class="prod-col-name">Juan Perez</div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar" style="width: 20%;">
-                      <span class="bar-label">20</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar horizontal-bar-orange" style="width: 62%;">
-                      <span class="bar-label">62</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-action">
-                  <button class="btn btn-success btn-sm">Asignar</button>
-                </div>
-              </div>
-
-              <!-- Row 2: aserrano -->
-              <div class="prod-row">
-                <div class="prod-col-user">aserrano</div>
-                <div class="prod-col-name">Alondra Serrano</div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar" style="width: 10%;">
-                      <span class="bar-label">10</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar horizontal-bar-orange" style="width: 70%;">
-                      <span class="bar-label">70</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-action">
-                  <button class="btn btn-success btn-sm">Asignar</button>
-                </div>
-              </div>
-
-              <!-- Row 3: avaldiviezo -->
-              <div class="prod-row">
-                <div class="prod-col-user">avaldiviezo</div>
-                <div class="prod-col-name">Alberto Valdiviezo</div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar" style="width: 50%;">
-                      <span class="bar-label">50</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar horizontal-bar-orange" style="width: 25%;">
-                      <span class="bar-label">25</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-action">
-                  <button class="btn btn-success btn-sm">Asignar</button>
-                </div>
-              </div>
-
-              <!-- Row 4: jsanchez -->
-              <div class="prod-row">
-                <div class="prod-col-user">jsanchez</div>
-                <div class="prod-col-name">Julio Sanchez</div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar" style="width: 40%;">
-                      <span class="bar-label">40</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-chart">
-                  <div class="horizontal-bar-wrapper">
-                    <div class="horizontal-bar horizontal-bar-orange" style="width: 48%;">
-                      <span class="bar-label">48</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="prod-col-action">
-                  <button class="btn btn-success btn-sm">Asignar</button>
-                </div>
-              </div>
+      <!-- PRODUCCIÓN view (HU010 - Producción del día) -->
+      <div *ngIf="getOriginalTabIndex(activeView) === 7">
+        <!-- Loading state -->
+        <div *ngIf="isLoadingProduccion" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="mt-2 text-muted">Cargando producción del día...</p>
+        </div>
+        
+        <div *ngIf="!isLoadingProduccion">
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5 class="m-0 fw-bold">PRODUCCIÓN DEL DÍA - {{ fechaHoyFormateado }}</h5>
             </div>
-
-            <!-- Chart visualization below table -->
-            <div class="mt-4">
-              <div class="prod-chart-section">
-                <div class="row">
-                  <div class="col-md-6" *ngFor="let user of prodDiaUsers">
-                    <div class="prod-chart-item mb-3">
-                      <div class="prod-chart-label">{{ user.nombre }}</div>
-                      <div class="prod-chart-bars">
-                        <div class="prod-chart-bar-group">
-                          <div class="prod-chart-bar prod-chart-bar-blue" [style.width.%]="user.agendados"></div>
-                          <span class="prod-chart-value">{{ user.agendados }}</span>
-                        </div>
-                        <div class="prod-chart-bar-group">
-                          <div class="prod-chart-bar prod-chart-bar-orange" [style.width.%]="user.asignados"></div>
-                          <span class="prod-chart-value">{{ user.asignados }}</span>
-                        </div>
-                      </div>
+            <div class="card-body">
+              <!-- Summary row -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card bg-light">
+                    <div class="card-body text-center">
+                      <h6 class="text-muted">Total Contactos Hoy</h6>
+                      <h2 class="fw-bold text-primary">{{ getTotalContactos() }}</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card bg-light">
+                    <div class="card-body text-center">
+                      <h6 class="text-muted">Total Pendientes</h6>
+                      <h2 class="fw-bold text-warning">{{ getTotalPendientes() }}</h2>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card bg-light">
+                    <div class="card-body text-center">
+                      <h6 class="text-muted">Tasa de Productividad</h6>
+                      <h2 class="fw-bold text-success">{{ getTasaProductividad() }}%</h2>
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <!-- Legend -->
-              <div class="d-flex justify-content-center gap-4 mt-3">
-                <div class="d-flex align-items-center">
-                  <div class="legend-box" style="background: #2e7db5;"></div>
-                  <span class="small">Agendados Ejecutivo</span>
-                </div>
-                <div class="d-flex align-items-center">
-                  <div class="legend-box" style="background: #ff8c42;"></div>
-                  <span class="small">Asignados supervisor</span>
-                </div>
+
+              <!-- Users table -->
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead class="table-light">
+                    <tr>
+                      <th>USUARIO</th>
+                      <th>NOMBRE</th>
+                      <th>CONTACTOS</th>
+                      <th>PENDIENTES</th>
+                      <th>TOTAL</th>
+                      <th>PROGRESO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let user of prodDiaUsers">
+                      <td>{{ user.usuario }}</td>
+                      <td>{{ user.nombre }}</td>
+                      <td class="text-primary fw-bold">{{ user.contactos }}</td>
+                      <td class="text-warning">{{ user.pendientes }}</td>
+                      <td>{{ user.total }}</td>
+                      <td style="width: 200px;">
+                        <div class="progress" style="height: 20px;">
+                          <div class="progress-bar bg-success" role="progressbar" 
+                               [style.width.%]="getBarWidth(user.contactos, user.total)"
+                               [attr.aria-valuenow]="user.contactos" 
+                               aria-valuemin="0" 
+                               [attr.aria-valuemax]="user.total">
+                            {{ user.contactos }}/{{ user.total }}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr *ngIf="prodDiaUsers.length === 0">
+                      <td colspan="6" class="text-center text-muted py-4">
+                        No hay datos de producción para hoy
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

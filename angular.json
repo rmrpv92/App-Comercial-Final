@@ -13,6 +13,8 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": "dist/tb1",
+            "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
               "zone.js"
@@ -30,6 +32,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/App-Comercial/",
               "budgets": [
                 {
                   "type": "initial",
