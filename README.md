@@ -18,7 +18,6 @@ El sistema permite a los ejecutivos comerciales gestionar sus actividades diaria
 ## 📚 Documentación
 
 - [Guía Detallada de Historias de Usuario](docs/GUIA_HISTORIAS_USUARIO.md)
-- [Guía de Configuración de AWS](docs/AWS_CONFIGURATION_GUIDE.md)
 
 ## 🎯 Historias de Usuario Implementadas
 
