@@ -91,7 +91,7 @@ El sistema permite a los ejecutivos comerciales gestionar sus actividades diaria
 
 | Usuario | Contraseña | Rol |
 |---------|------------|-----|
-| admin1 | admin123 | Administrador |
+| admin | admin123 | Administrador |
 | supervisor1 | super123 | Supervisor |
 | ejecutivo1 | ejec123 | Ejecutivo |
 
