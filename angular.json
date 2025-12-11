@@ -32,7 +32,7 @@
           },
           "configurations": {
             "production": {
-              "baseHref": "/App-Comercial/",
+              "baseHref": "/",
               "budgets": [
                 {
                   "type": "initial",
