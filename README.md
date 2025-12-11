@@ -95,18 +95,4 @@ El sistema permite a los ejecutivos comerciales gestionar sus actividades diaria
 | supervisor1 | super123 | Supervisor |
 | ejecutivo1 | ejec123 | Ejecutivo |
 
-## 📡 API Endpoints
-
-**Base URL:** `https://o1a90x561f.execute-api.us-east-1.amazonaws.com/v1`
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | /login | Autenticación |
-| GET | /empresas | Búsqueda de empresas |
-| GET | /agenda | Agenda del día |
-| GET | /dashboard | Métricas dashboard |
-| GET | /pendientes | Pendientes acumulados/olvidados |
-| GET | /calendario | Calendario semanal |
-| GET | /cerrados | Ventas cerradas |
-| GET | /produccion | Producción diaria |
 
